@@ -15,8 +15,8 @@ interface EditorProps {
 }
 
 export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
-  // Input State
-  const [topic, setTopic] = useState(initialTemplate?.title || 'YSL 小金条口红');
+  // Input State - Cleaned defaults to avoid bias
+  const [topic, setTopic] = useState(initialTemplate?.title || '');
   
   // New States for UI Requirements
   const [postType, setPostType] = useState<PostType>('种草');
@@ -29,20 +29,18 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
     filterMarketing: true,
   });
   
+  // Cleaned default description
   const [showExtraInfo, setShowExtraInfo] = useState(!!initialTemplate?.description);
-  const [extraInfo, setExtraInfo] = useState(initialTemplate?.description || '持妆 12 小时\n哑光但不拔干\n显色度高\n约会必备');
+  const [extraInfo, setExtraInfo] = useState(initialTemplate?.description || '');
 
-  // Output State
-  const [generatedTitle, setGeneratedTitle] = useState('挖到宝了！这支口红简直是约会神器 💄✨');
-  const [generatedBody, setGeneratedBody] = useState(`姐妹们，听我说！YSL这支小金条真的绝绝子！刚拿到手我就尖叫了。😱💖
+  // Output State - Generic placeholders
+  const [generatedTitle, setGeneratedTitle] = useState('标题将显示在这里');
+  const [generatedBody, setGeneratedBody] = useState(`点击左侧“一键生成”按钮，AI 将为您创作精彩内容...
 
-质地是那种很高级的丝绒哑光感，上嘴超级顺滑，完全不显唇纹。我带妆出门浪了一整天（还喝了咖啡），居然纹丝不动，这持妆力真的爱了。☕️🍷
+支持自动拆分长文案为多张图片。
+支持自定义背景、字体和排版风格。
 
-重点是！它虽然是哑光，但真的不拔干！到底是什么神仙配方呀？嘴巴一整天都润润的。
-
-真心推荐，闭眼入不踩雷！约会涂它绝对斩男！🔥
-
-#YSL小金条 #口红试色 #哑光口红 #约会妆容 #美妆分享 #显白口红`);
+输入您的主题（如：iGEM备赛经验、穷游攻略），即可开始创作！✨`);
   
   // DIY Poster State
   const [posterConfig, setPosterConfig] = useState<PosterConfig>({
@@ -122,6 +120,10 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
   }, [generatedTitle, generatedBody]);
 
   const handleGenerate = async () => {
+    if (!topic.trim()) {
+        setError("请输入主题");
+        return;
+    }
     setIsGenerating(true);
     setError(null);
     setCurrentSlideIndex(0); // Reset to cover
@@ -227,7 +229,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
-                  placeholder="例如：YSL 小金条口红" 
+                  placeholder="例如：iGEM 备赛经验分享" 
                 />
               </div>
 
@@ -372,6 +374,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
                 {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Wand2 size={20} />}
                 {isGenerating ? '生成文案' : '一键生成'}
               </button>
+              {error && <p className="text-xs text-red-500 mt-2 text-center">{error}</p>}
             </div>
           </div>
 
