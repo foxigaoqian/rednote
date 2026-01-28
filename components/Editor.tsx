@@ -354,7 +354,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
 
               {/* Extra Info Textarea (Conditional) */}
               {showExtraInfo && (
-                <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex flex-col gap-2 animate-fade-in">
                   <textarea 
                     value={extraInfo}
                     onChange={(e) => setExtraInfo(e.target.value)}
@@ -434,7 +434,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
             <div className="flex-1 flex flex-col overflow-hidden relative">
               {/* DIY Controls Overlay (Only when Design tab active) */}
               {activeTab === 'design' && (
-                <div className="absolute top-4 left-4 z-30 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl p-4 shadow-lg w-64 flex flex-col gap-4 max-h-[calc(100%-2rem)] overflow-y-auto animate-in slide-in-from-left-4 fade-in duration-200">
+                <div className="absolute top-4 left-4 z-30 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl p-4 shadow-lg w-64 flex flex-col gap-4 max-h-[calc(100%-2rem)] overflow-y-auto animate-slide-in-left">
                    
                    {/* Background Color */}
                    <div>
