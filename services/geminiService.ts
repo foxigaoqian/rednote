@@ -36,8 +36,8 @@ xxx
 `;
 
 const getAIClient = () => {
-  // 直接使用您提供的 API Key，避免浏览器环境中 process 未定义导致崩溃
-  const apiKey = "AlzaSyCyEh9zoQKKIZ22QeeHmEAENCJ--Rzt3W0";
+  // 修正 API Key：通常以 AIza 开头 (大写 I)，而不是 Alza (小写 l)
+  const apiKey = "AIzaSyCyEh9zoQKKIZ22QeeHmEAENCJ--Rzt3W0";
   
   if (!apiKey) {
     throw new Error("API Key not found");

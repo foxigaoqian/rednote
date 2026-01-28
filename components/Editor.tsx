@@ -131,8 +131,17 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack }) => {
       const result = await generateRedBookPost(topic, extraInfo, postType, wordCount, options);
       setGeneratedTitle(result.title);
       setGeneratedBody(result.body);
-    } catch (e) {
-      setError("生成失败，请检查 API Key 设置或稍后重试。");
+    } catch (e: any) {
+      console.error(e);
+      // 显示更详细的错误信息
+      const errorMsg = e.message || "未知错误";
+      if (errorMsg.includes("403")) {
+          setError(`API Key 无效或受限 (403). 请检查 Key 是否正确。`);
+      } else if (errorMsg.includes("404")) {
+          setError(`模型未找到 (404). 请稍后重试。`);
+      } else {
+          setError(`生成失败: ${errorMsg}`);
+      }
     } finally {
       setIsGenerating(false);
     }
