@@ -36,7 +36,9 @@ xxx
 `;
 
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // 直接使用您提供的 API Key，避免浏览器环境中 process 未定义导致崩溃
+  const apiKey = "AlzaSyCyEh9zoQKKIZ22QeeHmEAENCJ--Rzt3W0";
+  
   if (!apiKey) {
     throw new Error("API Key not found");
   }
