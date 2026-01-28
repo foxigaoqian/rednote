@@ -7,6 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // 手动注入环境变量，确保浏览器环境能读取到 API Key
+      window.process = {
+        env: {
+          API_KEY: "AlzaSyCyEh9zoQKKIZ22QeeHmEAENCJ--Rzt3W0"
+        }
+      };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
