@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, PenTool, Image as ImageIcon, Calendar, Settings, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, PenTool, Image as ImageIcon, Calendar, Settings, HelpCircle, Copy } from 'lucide-react';
 
-export type ViewType = 'home' | 'editor' | 'image-gen' | 'calendar' | 'settings';
+export type ViewType = 'home' | 'editor' | 'image-gen' | 'calendar' | 'settings' | 'viral-copy';
 
 interface SidebarProps {
   activeView: ViewType;
@@ -37,6 +37,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate }) => {
           <div onClick={() => onNavigate('editor')} className={menuItemClass(activeView === 'editor')}>
             <PenTool size={20} />
             <span className="text-sm font-medium">AI 创作</span>
+          </div>
+          <div onClick={() => onNavigate('viral-copy')} className={menuItemClass(activeView === 'viral-copy')}>
+            <Copy size={20} />
+            <span className="text-sm font-medium">爆款模仿</span>
           </div>
           <div onClick={() => onNavigate('image-gen')} className={menuItemClass(activeView === 'image-gen')}>
             <ImageIcon size={20} />

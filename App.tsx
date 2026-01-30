@@ -5,6 +5,7 @@ import { Editor } from './components/Editor';
 import { ImageGenerator } from './components/ImageGenerator';
 import { CalendarView } from './components/CalendarView';
 import { SettingsView } from './components/SettingsView';
+import { ViralCopycat } from './components/ViralCopycat';
 import { Template } from './types';
 
 function App() {
@@ -29,6 +30,8 @@ function App() {
         return <Home onSelectTemplate={handleSelectTemplate} />;
       case 'editor':
         return <Editor initialTemplate={selectedTemplate} onBack={() => handleNavigate('home')} />;
+      case 'viral-copy':
+        return <ViralCopycat />;
       case 'image-gen':
         return <ImageGenerator />;
       case 'calendar':
