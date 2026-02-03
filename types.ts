@@ -1,6 +1,18 @@
+
 export type ToneType = '种草风' | '专业风' | '随性风' | '科普风';
-export type PostType = '种草' | '攻略' | '教程' | '分享' | '电商' | '测评' | '干货' | '任意';
-export type WordCountType = '200字左右' | '300字左右' | '500字左右' | '800字左右' | '不限字数';
+export type Platform = 'xiaohongshu' | 'wechat' | 'toutiao' | 'baijiahao' | 'sohu';
+
+// Combined PostTypes for all platforms
+export type PostType = 
+  // Xiaohongshu
+  | '种草' | '攻略' | '教程' | '分享' | '电商' | '测评' | '干货' 
+  // Official Accounts / News
+  | '深度观点' | '热点评论' | '行业资讯' | '情感故事' | '官方通告'
+  // General / Other
+  | '科普'
+  | '任意';
+
+export type WordCountType = '200字左右' | '300字左右' | '500字左右' | '800字左右' | '1000字以上' | '2000字以上' | '不限字数';
 
 export interface GenerationOptions {
   quoteTitle: boolean;

@@ -29,7 +29,15 @@ function App() {
       case 'home':
         return <Home onSelectTemplate={handleSelectTemplate} />;
       case 'editor':
-        return <Editor initialTemplate={selectedTemplate} onBack={() => handleNavigate('home')} />;
+        return <Editor initialTemplate={selectedTemplate} onBack={() => handleNavigate('home')} platform="xiaohongshu" />;
+      case 'wechat':
+        return <Editor onBack={() => handleNavigate('home')} platform="wechat" />;
+      case 'toutiao':
+        return <Editor onBack={() => handleNavigate('home')} platform="toutiao" />;
+      case 'baijia':
+        return <Editor onBack={() => handleNavigate('home')} platform="baijiahao" />;
+      case 'sohu':
+        return <Editor onBack={() => handleNavigate('home')} platform="sohu" />;
       case 'viral-copy':
         return <ViralCopycat />;
       case 'image-gen':
