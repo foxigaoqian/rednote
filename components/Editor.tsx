@@ -239,6 +239,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
   const [isRewriting, setIsRewriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const [isCopying, setIsCopying] = useState(false);
 
   // Constants
   const postTypes = getPostTypes(platform as Platform);
@@ -344,21 +345,96 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
     alert(`准备导出 ${slides.length} 张图片... (需集成html2canvas)`);
   };
 
-  const copyContent = () => {
-    const fullContent = `${generatedTitle}\n\n${generatedBody}`;
-    navigator.clipboard.writeText(fullContent);
-    alert('内容已复制到剪贴板！');
+  const copyContent = async () => {
+    setIsCopying(true);
+    try {
+      // 1. 构造 HTML 内容
+      let bodyHtml = generatedBody;
+
+      // 处理 Markdown 图片占位符 -> HTML Img Tag (Base64)
+      if (options.images && options.images.length > 0) {
+         const imgRegex = /!\[img\]\((\d+)\)/g;
+         // 直接替换为 options.images 中的 Base64 字符串
+         bodyHtml = bodyHtml.replace(imgRegex, (match, index) => {
+           const idx = parseInt(index, 10);
+           if (options.images && options.images[idx]) {
+             // 使用 max-width 确保图片不溢出，适配大多数编辑器
+             return `<br/><img src="${options.images[idx]}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;" /><br/>`;
+           }
+           return match;
+         });
+      }
+
+      // 处理 Markdown 格式 -> HTML
+      // 标题
+      bodyHtml = bodyHtml.replace(/^#{1,6}\s+(.*)$/gm, (match, content) => {
+         return `<h3 style="margin-top: 1.5em; margin-bottom: 0.8em; font-weight: bold;">${content}</h3>`;
+      });
+      // 加粗
+      bodyHtml = bodyHtml.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      // 引用
+      bodyHtml = bodyHtml.replace(/^>\s+(.*)$/gm, '<blockquote style="border-left: 4px solid #ccc; padding-left: 10px; color: #666; margin: 10px 0;">$1</blockquote>');
+      // 段落 (双换行变 P，单换行变 BR)
+      bodyHtml = bodyHtml.split(/\n\s*\n/).map(p => `<p style="margin-bottom: 1em; line-height: 1.6;">${p.replace(/\n/g, '<br/>')}</p>`).join('');
+
+      const titleHtml = `<h1 style="font-size: 24px; font-weight: bold; margin-bottom: 16px;">${generatedTitle}</h1>`;
+      const fullHtml = `<div>${titleHtml}${bodyHtml}</div>`;
+      
+      // 2. 构造纯文本内容 (Fallback)
+      const fullText = `${generatedTitle}\n\n${generatedBody}`;
+
+      // 3. 写入剪贴板 (富文本 + 纯文本)
+      if (navigator.clipboard && navigator.clipboard.write) {
+          const blobHtml = new Blob([fullHtml], { type: 'text/html' });
+          const blobText = new Blob([fullText], { type: 'text/plain' });
+          
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': blobHtml,
+              'text/plain': blobText,
+            })
+          ]);
+          alert('✅ 内容与图片已复制！\n可直接粘贴到微信公众号、Word 或文档中。');
+      } else {
+          // 降级处理
+          navigator.clipboard.writeText(fullText);
+          alert('⚠️ 浏览器不支持富文本复制，已复制纯文本（不含图片）。');
+      }
+    } catch (err) {
+      console.error("Copy failed", err);
+      // 最后一道防线：仅复制文本
+      navigator.clipboard.writeText(`${generatedTitle}\n\n${generatedBody}`);
+      alert('⚠️ 图片复制失败，已复制纯文字。');
+    } finally {
+      setIsCopying(false);
+    }
   };
 
   const toggleOption = (key: keyof GenerationOptions) => {
     setOptions(prev => ({ ...prev, [key]: !prev[key] }));
   };
   
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Helper to read file as Base64 string
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file as Blob));
-      setOptions(prev => ({ ...prev, images: [...(prev.images || []), ...newImages] }));
+      try {
+        const newImagesPromises = Array.from(files).map(file => fileToBase64(file as File));
+        const newImages = await Promise.all(newImagesPromises);
+        setOptions(prev => ({ ...prev, images: [...(prev.images || []), ...newImages] }));
+      } catch (error) {
+        console.error("Error reading image files", error);
+        alert("图片上传失败，请重试");
+      }
     }
     // clear input
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -750,8 +826,8 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
                    <button onClick={handleRewrite} className="text-xs text-primary flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded">
                      <RefreshCw size={12} className={isRewriting ? "animate-spin" : ""} /> AI 润色
                    </button>
-                   <button onClick={copyContent} className="text-xs text-gray-500 hover:text-primary flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100">
-                     <Copy size={14} /> 复制全文
+                   <button onClick={copyContent} disabled={isCopying} className="text-xs text-gray-500 hover:text-primary flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50">
+                     {isCopying ? <Loader2 size={14} className="animate-spin"/> : <Copy size={14} />} {isCopying ? "复制中..." : "复制全文"}
                    </button>
                </div>
             </div>
