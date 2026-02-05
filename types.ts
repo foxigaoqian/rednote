@@ -1,6 +1,6 @@
 
 export type ToneType = '种草风' | '专业风' | '随性风' | '科普风';
-export type Platform = 'xiaohongshu' | 'wechat' | 'toutiao' | 'baijiahao' | 'sohu';
+export type Platform = 'xiaohongshu' | 'wechat' | 'toutiao' | 'baijiahao' | 'sohu' | 'seo';
 
 // Combined PostTypes for all platforms
 export type PostType = 
@@ -10,6 +10,7 @@ export type PostType =
   | '深度观点' | '热点评论' | '行业资讯' | '情感故事' | '官方通告'
   // General / Other
   | '科普'
+  | '行业干货' | '产品评测' | '技术教程' | 'Q&A问答' | '新闻资讯'
   | '任意';
 
 export type WordCountType = '200字左右' | '300字左右' | '500字左右' | '800字左右' | '1000字以上' | '2000字以上' | '不限字数';
@@ -20,6 +21,11 @@ export interface GenerationOptions {
   addHashtags: boolean;
   filterProhibited: boolean;
   filterMarketing: boolean;
+  // SEO Specific
+  industry?: string;
+  brandName?: string;
+  // Image Library
+  images?: string[];
 }
 
 export interface GeneratedContent {

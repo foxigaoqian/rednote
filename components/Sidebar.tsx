@@ -1,10 +1,10 @@
 import React from 'react';
 import { 
   LayoutDashboard, PenTool, Image as ImageIcon, Calendar, Settings, HelpCircle, Copy,
-  MessageSquare, Newspaper, Feather, Globe
+  MessageSquare, Newspaper, Feather, Globe, Search
 } from 'lucide-react';
 
-export type ViewType = 'home' | 'editor' | 'image-gen' | 'calendar' | 'settings' | 'viral-copy' | 'wechat' | 'toutiao' | 'baijia' | 'sohu';
+export type ViewType = 'home' | 'editor' | 'image-gen' | 'calendar' | 'settings' | 'viral-copy' | 'wechat' | 'toutiao' | 'baijia' | 'sohu' | 'seo';
 
 interface SidebarProps {
   activeView: ViewType;
@@ -66,6 +66,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate }) => {
           <div onClick={() => onNavigate('sohu')} className={menuItemClass(activeView === 'sohu')}>
             <Feather size={20} />
             <span className="text-sm font-medium">搜狐号</span>
+          </div>
+          <div onClick={() => onNavigate('seo')} className={menuItemClass(activeView === 'seo')}>
+            <Search size={20} />
+            <span className="text-sm font-medium">SEO 文章</span>
           </div>
 
           <div className={sectionHeaderClass}>工具 & 设置</div>

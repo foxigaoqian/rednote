@@ -38,6 +38,8 @@ function App() {
         return <Editor onBack={() => handleNavigate('home')} platform="baijiahao" />;
       case 'sohu':
         return <Editor onBack={() => handleNavigate('home')} platform="sohu" />;
+      case 'seo':
+        return <Editor onBack={() => handleNavigate('home')} platform="seo" />;
       case 'viral-copy':
         return <ViralCopycat />;
       case 'image-gen':

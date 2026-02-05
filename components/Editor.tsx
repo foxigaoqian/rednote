@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   ChevronRight, Save, Download, RefreshCw, Copy, 
   Bold, Italic, List, Wand2, ArrowLeft, Share2, 
   MoreHorizontal, Battery, Wifi, Signal, Loader2,
   Heart, Star, Palette, Type, Layout, AlignLeft, AlignCenter, AlignRight,
-  Edit2, ChevronLeft, MessageSquare, Newspaper, Feather, Globe, User, CheckCircle2
+  Edit2, ChevronLeft, MessageSquare, Newspaper, Feather, Globe, User, CheckCircle2,
+  Search, Lock, Briefcase, Tag, Image as ImageIcon, Plus, X
 } from 'lucide-react';
 import { GeneratedContent, Template, PosterConfig, PostType, WordCountType, GenerationOptions, Platform } from '../types';
 import { generateSocialPost, rewriteSection } from '../services/geminiService';
@@ -15,15 +16,31 @@ interface EditorProps {
   platform?: Platform;
 }
 
-// 优化后的 Markdown 渲染组件
-const SimpleMarkdownRenderer: React.FC<{ text: string, platform: Platform }> = ({ text, platform }) => {
+// 优化后的 Markdown 渲染组件，支持图片插入和多级标题
+const SimpleMarkdownRenderer: React.FC<{ text: string, platform: Platform, images?: string[] }> = ({ text, platform, images = [] }) => {
   if (!text) return null;
 
   // 将文本按段落分割 (双换行视为分段)
   const paragraphs = text.split(/\n\s*\n/);
   
-  // 内联解析函数：处理加粗 **text**
+  // 内联解析函数：处理加粗 **text** 和图片占位符
   const renderInline = (str: string) => {
+    // 处理图片占位符 ![img](index)
+    const imgRegex = /!\[img\]\((\d+)\)/;
+    const imgMatch = str.match(imgRegex);
+    if (imgMatch) {
+       const imgIndex = parseInt(imgMatch[1], 10);
+       if (images && images[imgIndex]) {
+          return (
+            <div className="my-6 rounded-lg overflow-hidden shadow-sm border border-gray-100">
+               <img src={images[imgIndex]} alt={`Image ${imgIndex}`} className="w-full h-auto object-cover max-h-[400px]" />
+               {platform === 'wechat' && <div className="text-center text-xs text-gray-400 mt-2">图片描述</div>}
+            </div>
+          );
+       }
+       return null; // 图片索引无效时不渲染
+    }
+
     // 使用非贪婪匹配捕获 **...**
     const parts = str.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, idx) => {
@@ -42,26 +59,73 @@ const SimpleMarkdownRenderer: React.FC<{ text: string, platform: Platform }> = (
   return (
     <div className={`
       ${platform === 'wechat' ? 'text-[16px] text-[#333] leading-[1.8] tracking-wide text-justify font-sans' : ''}
-      ${platform === 'toutiao' ? 'text-[18px] text-[#222] leading-[1.6] tracking-normal text-justify font-sans' : ''}
+      ${platform === 'toutiao' || platform === 'seo' ? 'text-[18px] text-[#222] leading-[1.6] tracking-normal text-justify font-sans' : ''}
     `}>
       {paragraphs.map((paragraph, idx) => {
         const cleanPara = paragraph.trim();
         if (!cleanPara) return null;
 
-        // 1. 处理标题 (## )
-        if (cleanPara.startsWith('##')) {
-          const content = cleanPara.replace(/^##\s*/, '');
-          if (platform === 'wechat') {
-             return (
-               <section key={idx} className="mt-8 mb-4">
-                 <div className="flex items-center gap-2 mb-2">
-                   <div className="w-1 h-4 bg-[#f20d0d] rounded-full"></div>
-                   <h3 className="text-[17px] font-bold text-black">{renderInline(content)}</h3>
-                 </div>
-               </section>
-             );
-          }
-          return <h3 key={idx} className="text-xl font-bold text-black mt-8 mb-3">{renderInline(content)}</h3>;
+        // 如果整段就是一张图片
+        if (cleanPara.match(/^!\[img\]\((\d+)\)$/)) {
+            return <div key={idx}>{renderInline(cleanPara)}</div>;
+        }
+
+        // 1. 处理标题 (# - ######)
+        // 匹配 1-6 个 # 后跟空格，兼容紧凑或有空行的写法
+        if (cleanPara.match(/^#{1,6}\s/)) {
+            // 处理段落内首行是标题，后面可能紧跟正文的情况
+            const firstLineEnd = cleanPara.indexOf('\n');
+            let headerLine = cleanPara;
+            let restContent = '';
+            
+            if (firstLineEnd > -1) {
+                headerLine = cleanPara.substring(0, firstLineEnd);
+                restContent = cleanPara.substring(firstLineEnd + 1).trim();
+            }
+
+            const headerMatch = headerLine.match(/^(#{1,6})\s+(.*)/);
+            if (headerMatch) {
+                const level = headerMatch[1].length;
+                const titleText = headerMatch[2];
+
+                let HeaderComponent;
+                
+                if (platform === 'wechat') {
+                     // 公众号风格标题
+                     HeaderComponent = (
+                       <section key={`${idx}-h`} className="mt-8 mb-4">
+                         <div className="flex items-center gap-2 mb-2">
+                           <div className="w-1 h-4 bg-[#f20d0d] rounded-full"></div>
+                           <h3 className="text-[17px] font-bold text-black">{renderInline(titleText)}</h3>
+                         </div>
+                       </section>
+                     );
+                } else {
+                    // 通用 H1-H6 样式
+                    const classNameMap: {[key: number]: string} = {
+                        1: "text-2xl font-bold text-black mt-8 mb-4 leading-tight",
+                        2: "text-xl font-bold text-black mt-6 mb-3 leading-snug",
+                        3: "text-lg font-bold text-black mt-5 mb-2 leading-snug",
+                        4: "text-base font-bold text-black mt-4 mb-2",
+                        5: "text-sm font-bold text-black mt-4 mb-2",
+                        6: "text-xs font-bold text-black mt-4 mb-2",
+                    };
+                    // 动态创建标签 h1-h6
+                    const Tag = `h${level}` as React.ElementType;
+                    HeaderComponent = <Tag key={`${idx}-h`} className={classNameMap[level] || classNameMap[2]}>{renderInline(titleText)}</Tag>;
+                }
+
+                return (
+                    <React.Fragment key={idx}>
+                        {HeaderComponent}
+                        {restContent && (
+                            <p className="mb-6 break-words">
+                                {renderInline(restContent)}
+                            </p>
+                        )}
+                    </React.Fragment>
+                );
+            }
         }
 
         // 2. 处理引用 (> )
@@ -74,7 +138,7 @@ const SimpleMarkdownRenderer: React.FC<{ text: string, platform: Platform }> = (
                </div>
              );
           }
-          return <blockquote key={idx} className="border-l-4 border-gray-300 pl-4 py-1 text-gray-500 my-4 italic">{renderInline(content)}</blockquote>;
+          return <blockquote key={idx} className="border-l-4 border-gray-300 pl-4 py-3 bg-gray-50 text-gray-600 my-4 italic text-sm">{renderInline(content)}</blockquote>;
         }
 
         // 3. 处理列表 (- )
@@ -117,6 +181,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
       case 'toutiao': return { name: '今日头条', icon: <Newspaper size={18}/>, defaultCount: '800字左右' as WordCountType };
       case 'baijiahao': return { name: '百家号', icon: <Globe size={18}/>, defaultCount: '800字左右' as WordCountType };
       case 'sohu': return { name: '搜狐号', icon: <Feather size={18}/>, defaultCount: '800字左右' as WordCountType };
+      case 'seo': return { name: 'SEO 文章', icon: <Search size={18}/>, defaultCount: '1000字以上' as WordCountType };
       default: return { name: '小红书笔记', icon: <Layout size={18}/>, defaultCount: '不限字数' as WordCountType };
     }
   };
@@ -125,11 +190,13 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
 
   // Input State
   const [topic, setTopic] = useState(initialTemplate?.title || '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Dynamic Types based on platform
   const getPostTypes = (p: Platform): PostType[] => {
     if (p === 'xiaohongshu') return ['种草', '攻略', '教程', '分享', '电商', '测评', '干货', '任意'];
     if (p === 'wechat') return ['深度观点', '情感故事', '行业资讯', '官方通告', '任意'];
+    if (p === 'seo') return ['行业干货', '产品评测', '技术教程', 'Q&A问答', '新闻资讯', '任意'];
     return ['热点评论', '行业资讯', '深度观点', '科普', '任意'];
   };
 
@@ -141,6 +208,9 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
     addHashtags: isXHS,
     filterProhibited: true,
     filterMarketing: true,
+    industry: '',
+    brandName: '',
+    images: [],
   });
   
   const [showExtraInfo, setShowExtraInfo] = useState(!!initialTemplate?.description);
@@ -283,6 +353,23 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
   const toggleOption = (key: keyof GenerationOptions) => {
     setOptions(prev => ({ ...prev, [key]: !prev[key] }));
   };
+  
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newImages = Array.from(files).map(file => URL.createObjectURL(file as Blob));
+      setOptions(prev => ({ ...prev, images: [...(prev.images || []), ...newImages] }));
+    }
+    // clear input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setOptions(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index)
+    }));
+  };
 
   const nextSlide = () => {
     if (currentSlideIndex < slides.length - 1) setCurrentSlideIndex(p => p + 1);
@@ -313,7 +400,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
             <span className="text-[#576b95] text-sm ml-2">发表于上海</span>
           </div>
           
-          <SimpleMarkdownRenderer text={generatedBody} platform="wechat" />
+          <SimpleMarkdownRenderer text={generatedBody} platform="wechat" images={options.images} />
 
           <div className="mt-12 pt-6 flex items-center justify-between text-[#888] text-sm mb-4">
              <div className="flex items-center gap-1">阅读 10万+</div>
@@ -352,7 +439,7 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
              <button className="ml-auto bg-[#f85959] text-white text-[13px] px-4 py-1 rounded-full font-medium">关注</button>
            </div>
 
-           <SimpleMarkdownRenderer text={generatedBody} platform="toutiao" />
+           <SimpleMarkdownRenderer text={generatedBody} platform="toutiao" images={options.images} />
            
            <div className="mt-10 flex flex-wrap gap-2">
              {['科技', '人工智能', '大模型', '观点'].map(tag => (
@@ -360,6 +447,43 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
              ))}
            </div>
         </div>
+      </div>
+    </div>
+  );
+
+  const SeoPreview = () => (
+    <div className="flex-1 flex justify-center bg-[#f0f2f5] overflow-y-auto">
+      <div className="w-full max-w-[800px] bg-white min-h-[800px] shadow-sm relative flex flex-col my-4 lg:my-8 p-8">
+        {/* Mock Browser Header */}
+        <div className="border-b border-gray-100 pb-4 mb-6">
+           <div className="flex gap-2 mb-2">
+             <div className="w-3 h-3 rounded-full bg-red-400"></div>
+             <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+             <div className="w-3 h-3 rounded-full bg-green-400"></div>
+           </div>
+           <div className="bg-gray-100 rounded-md px-3 py-1.5 text-xs text-gray-500 flex items-center gap-2">
+             <Lock size={10} />
+             example.com/blog/article-seo-preview
+           </div>
+        </div>
+
+        {/* SEO Snippet Preview */}
+        <div className="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-100">
+           <div className="text-xs text-gray-500 mb-1">Google 搜索结果预览</div>
+           <div className="text-[#1a0dab] text-lg font-medium hover:underline cursor-pointer truncate mb-0.5">{generatedTitle}</div>
+           <div className="text-[#006621] text-xs mb-1">www.example.com › blog › {topic || 'article'}</div>
+           <div className="text-[#545454] text-sm line-clamp-2 leading-snug">
+             {/* Try to extract meta description or first para */}
+             {generatedBody.includes('> Meta Description') 
+                ? generatedBody.split('> Meta Description')[1]?.split('\n')[0]?.replace(/^:/, '').trim().slice(0, 150)
+                : generatedBody.slice(0, 150).replace(/#|>/g, '')}...
+           </div>
+        </div>
+
+        <article className="prose prose-slate max-w-none">
+           <h1 className="text-3xl font-bold text-gray-900 mb-6">{generatedTitle}</h1>
+           <SimpleMarkdownRenderer text={generatedBody} platform="seo" images={options.images} />
+        </article>
       </div>
     </div>
   );
@@ -414,15 +538,53 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
               {/* Main Topic Input */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-semibold text-gray-700">
-                  <span className="text-primary mr-1">*</span>主题
+                  <span className="text-primary mr-1">*</span>{platform === 'seo' ? '核心关键词' : '主题'}
                 </label>
                 <input 
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
-                  placeholder={isXHS ? "例如：iGEM 备赛经验分享" : "例如：2024人工智能行业发展趋势深度解析"}
+                  placeholder={platform === 'seo' ? "例如：ERP系统、SaaS软件" : isXHS ? "例如：iGEM 备赛经验分享" : "例如：2024人工智能行业发展趋势深度解析"}
                 />
               </div>
+
+              {/* SEO Specific Inputs */}
+              {platform === 'seo' && (
+                <>
+                  <div className="flex flex-col gap-2 animate-fade-in">
+                    <label className="text-sm font-semibold text-gray-700">
+                      <span className="text-primary mr-1">*</span>行业领域
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Briefcase size={16} className="text-gray-400"/>
+                      </div>
+                      <input 
+                        value={options.industry || ''}
+                        onChange={(e) => setOptions({...options, industry: e.target.value})}
+                        className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
+                        placeholder="例如：企业服务、医疗健康..."
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 animate-fade-in">
+                    <label className="text-sm font-semibold text-gray-700">
+                      品牌名称 (可选)
+                    </label>
+                     <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Tag size={16} className="text-gray-400"/>
+                      </div>
+                      <input 
+                        value={options.brandName || ''}
+                        onChange={(e) => setOptions({...options, brandName: e.target.value})}
+                        className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
+                        placeholder="例如：Acme Corp"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Type Selection */}
               <div className="flex flex-col gap-3">
@@ -511,6 +673,50 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
                    </div>
                 </div>
               </div>
+
+              {/* Image Library (Only for multi-platform matrices) */}
+              {!isXHS && (
+                <div className="flex flex-col gap-3 animate-fade-in border-t border-gray-100 pt-4">
+                  <label className="text-sm font-semibold text-gray-700 flex justify-between items-center">
+                    <span className="flex items-center gap-1"><ImageIcon size={16} className="text-primary"/> 图片库 (智能插入)</span>
+                    <span className="text-xs text-gray-400">{options.images?.length || 0} 张</span>
+                  </label>
+                  
+                  <div className="grid grid-cols-4 gap-2">
+                    {options.images && options.images.map((img, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-md overflow-hidden group border border-gray-200">
+                        <img src={img} className="w-full h-full object-cover" alt="upload" />
+                        <button 
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center opacity-0 group-hover:opacity-100">
+                          Idx: {idx}
+                        </div>
+                      </div>
+                    ))}
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="aspect-square rounded-md border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors text-gray-400 hover:text-primary"
+                    >
+                      <Plus size={20} />
+                    </div>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={handleImageUpload} 
+                  />
+                  <p className="text-[10px] text-gray-400 leading-tight">
+                    *上传图片后，AI 将在文章正文中自动匹配并插入图片位置。
+                  </p>
+                </div>
+              )}
 
               {/* Extra Info Textarea (Conditional) */}
               {showExtraInfo && (
@@ -822,6 +1028,8 @@ export const Editor: React.FC<EditorProps> = ({ initialTemplate, onBack, platfor
               </>
             ) : isWeChat ? (
                <WeChatPreview />
+            ) : platform === 'seo' ? (
+               <SeoPreview />
             ) : (
                <NewsPreview />
             )}

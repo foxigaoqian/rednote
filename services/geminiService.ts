@@ -2,11 +2,10 @@ import { GoogleGenAI } from "@google/genai";
 import { GeneratedContent, PostType, WordCountType, GenerationOptions, Platform } from "../types";
 
 const getAIClient = () => {
-  // 修正 API Key：通常以 AIza 开头 (大写 I)，而不是 Alza (小写 l)
-  const apiKey = "AIzaSyCyEh9zoQKKIZ22QeeHmEAENCJ--Rzt3W0";
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("API Key not found");
+    throw new Error("API Key not found in environment variables");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -49,6 +48,9 @@ const SYSTEM_PROMPTS: Record<Platform, string> = {
 适合普通读者快速理解。
 
 内容强调清晰表达和阅读体验。
+`,
+  seo: `
+你是一名长期为企业官网撰写内容的中文 SEO 编辑，熟悉百度搜索算法，对不同行业的信息型内容表达方式有实践经验。
 `
 };
 
@@ -64,6 +66,11 @@ export const generateSocialPost = async (
     const ai = getAIClient();
     const systemPrompt = SYSTEM_PROMPTS[platform] || SYSTEM_PROMPTS.xiaohongshu;
     
+    // 图片插入指令 logic
+    const imageInsertionPrompt = (options.images && options.images.length > 0) 
+      ? `\n【图片插入指令】\n用户提供了 ${options.images.length} 张图片。请在正文中合适的位置（如段落之间）自然插入图片占位符。\n占位符格式严格为：![img](0) , ![img](1) 等，数字代表图片索引（0 到 ${options.images.length - 1}）。\n请根据上下文内容，合理分配这 ${options.images.length} 张图片的位置，不要堆砌在一起。` 
+      : '';
+
     // 基础信息块 (统一输入参数)
     const baseInfo = `
 【主题】
@@ -81,6 +88,7 @@ ${wordCount}
 - 是否过滤违禁词：${options.filterProhibited ? '是' : '否'}
 - 是否过滤营销词：${options.filterMarketing ? '是' : '否'}
 - 补充创作信息：${extraInfo || '无'}
+${imageInsertionPrompt}
 `;
 
     // 平台特定的 Prompt Body
@@ -164,6 +172,59 @@ ${wordCount}
 - 开头：引出话题
 - 正文：展开说明
 - 结尾：简要总结
+`;
+    } else if (platform === 'seo') {
+      const industry = options.industry || '请根据关键词自动推导所属行业';
+      const brand = options.brandName || (extraInfo ? `请从以下补充信息中提取品牌名：${extraInfo}` : '无（保持中立客观视角）');
+
+      platformBody = `
+请基于以下信息，生成一篇用于企业官网发布的 SEO 信息型文章：
+
+核心关键词：【${topic}】
+行业领域：【${industry}】
+品牌名称：【${brand}】
+
+一、SEO 与平台要求
+1. 面向百度搜索引擎优化
+2. 内容偏信息型、认知型，而非促销页
+3. 关键词自然融入标题与正文，不刻意堆砌
+4. 结构清晰，适合长期收录
+5. 正文长度建议 1200–1800 字
+6. 必须包含 SEO Meta Description（放在文章最顶部，以 > Meta Description: 开头）
+
+二、去 AI 痕迹要求
+1. 行文需接近人工撰写风格
+2. 避免模板化、总结式、列表堆叠
+3. 多使用解释型、经验型、因果型表达
+4. 语气理性、克制、专业，不夸张
+
+三、行业合规要求（动态适配行业）
+1. 内容表达需严格符合关键词所属行业的合规边界
+2. 若涉及敏感领域（如医疗、健康、金融、教育等），使用科普、认知、原理、使用场景等中性表述
+3. 禁止承诺结果、禁止夸大效果、禁止使用绝对化用语
+4. 明确“信息介绍 / 使用参考”属性
+
+四、品牌融入要求
+1. 若提供了品牌名称，将其自然融入文章，以“行业实践者 / 经验总结者 / 解决方案提供方”身份出现
+2. 不硬广、不促销、不堆品牌名
+3. 品牌出现 2–4 次即可，分散在正文不同位置
+4. 若无品牌信息，则保持客观行业科普视角
+
+五、文章结构要求（可灵活调整，避免模板感）
+- 顶部：> Meta Description: 120字以内，包含核心词，吸引点击
+- 引言：从用户常见疑问或认知误区切入【${topic}】
+- 关键词相关概念解释（结合行业背景）
+- 从行业原理或理论角度解析其价值或意义
+- 实际应用或使用场景分析
+- 适合人群 / 适用对象 / 使用条件说明
+- 理性看待其作用或边界
+- 总结：回到关键词，强调理性选择与长期价值
+
+六、输出要求
+1. 直接输出完整可发布文章
+2. 使用 Markdown 标题结构 (H1/H2/H3)
+3. 不解释写作思路
+4. 不添加模板化免责声明
 `;
     }
 
