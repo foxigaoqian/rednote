@@ -2,7 +2,9 @@ import { GoogleGenAI } from "@google/genai";
 import { GeneratedContent, PostType, WordCountType, GenerationOptions, Platform } from "../types";
 
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // 优先尝试从 window.process 获取 API Key (适配 index.html 手动注入的情况)
+  // 这可以防止构建工具在构建时因找不到环境变量而将 process.env.API_KEY 替换为 undefined
+  const apiKey = (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) || process.env.API_KEY;
   
   if (!apiKey) {
     throw new Error("API Key not found in environment variables");
